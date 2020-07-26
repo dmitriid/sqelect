@@ -20,9 +20,16 @@ defmodule Sqelect.MixProject do
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
+    # deps
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:ecto, "~>3.4.5"},
+      {:ecto_sql, "~>3.4.5"},
+      {:db_connection, "~>2.2.2"},
+      {:sqlitex, "~>1.7.1"}
+    ] ++
+    # dev deps
+    [
+      {:credo, "~>1.4.0"}
     ]
   end
 end

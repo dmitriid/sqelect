@@ -1,12 +1,12 @@
 defmodule ConnectionTest do
   use ExUnit.Case, async: true
 
-  alias Sqelect.Connection.Query
-  alias Sqelect.Connection.Result
+  alias Sqelect.DbConnection.Query
+  alias Sqelect.DbConnection.Result
 
   setup do
     opts = [database: ":memory:", backoff_type: :stop, show_sensitive_data_on_connection_error: true]
-    {:ok, pid} = DBConnection.start_link(Sqelect.Connection.Connection, opts)
+    {:ok, pid} = DBConnection.start_link(Sqelect.DbConnection.Protocol, opts)
 
     query = %Query{name: "", statement: "CREATE TABLE uniques (a int UNIQUE)"}
     {:ok, _, _} = DBConnection.prepare_execute(pid, query, [])
@@ -23,7 +23,7 @@ defmodule ConnectionTest do
   test "prepare failure case", %{pid: pid} do
     query = %Query{name: "test", statement: "huh"}
     assert {:error, err} = DBConnection.prepare(pid, query)
-    assert %Sqelect.Connection.Error{message: "near \"huh\": syntax error",
+    assert %Sqelect.DbConnection.Error{message: "near \"huh\": syntax error",
                                       sqlite: %{code: :sqlite_error}} = err
   end
 

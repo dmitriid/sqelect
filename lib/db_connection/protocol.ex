@@ -1,10 +1,9 @@
-defmodule Sqelect.Connection.Connection do
+defmodule Sqelect.DbConnection.Protocol do
   @moduledoc false
 
-  import Supervisor.Spec
   @behaviour DBConnection
 
-  alias Sqelect.Connection.Query
+  alias Sqelect.DbConnection.Query
 
   defstruct [:db, :db_path, :pid, :checked_out?, :in_transaction?]
 
@@ -42,7 +41,7 @@ defmodule Sqelect.Connection.Connection do
   def handle_close(_query, _opts, state) do
     # no-op: esqlite doesn't expose statement close.
     # Instead it relies on statements getting garbage collected.
-    res = %Sqelect.Connection.Result{command: :close}
+    res = %Sqelect.DbConnection.Result{command: :close}
     {:ok, res, state}
   end
 
@@ -56,11 +55,11 @@ defmodule Sqelect.Connection.Connection do
   end
 
   def handle_deallocate(_query, _cursor, _opts, state) do
-    {:error, %Sqelect.Connection.Error{message: "Cursors not supported"}, state}
+    {:error, %Sqelect.DbConnection.Error{message: "Cursors not supported"}, state}
   end
 
   def handle_declare(_query, _cursor, _opts, state) do
-    {:error, %Sqelect.Connection.Error{message: "Cursors not supported"}, state}
+    {:error, %Sqelect.DbConnection.Error{message: "Cursors not supported"}, state}
   end
 
   def handle_execute(%Query{} = query, params, opts, state) do
@@ -68,7 +67,7 @@ defmodule Sqelect.Connection.Connection do
   end
 
   def handle_fetch(_query, _cursor, _opts, state) do
-    {:error, %Sqelect.Connection.Error{message: "Cursors not supported"}, state}
+    {:error, %Sqelect.DbConnection.Error{message: "Cursors not supported"}, state}
   end
 
   def handle_prepare(
@@ -116,7 +115,7 @@ defmodule Sqelect.Connection.Connection do
   defp handle_transaction(stmt, opts, state) do
     {:ok, _rows} = query_rows(state.db, stmt, Keyword.merge(opts, [into: :raw_list]))
     command = command_from_sql(stmt)
-    result = %Sqelect.Connection.Result{
+    result = %Sqelect.DbConnection.Result{
       rows: nil,
       num_rows: nil,
       columns: nil,
@@ -126,14 +125,12 @@ defmodule Sqelect.Connection.Connection do
   end
 
   defp query_rows(db, stmt, opts) do
-    try do
-      Sqlitex.Server.query_rows(db, stmt, opts)
-    catch
-      :exit, {:timeout, _gen_server_call} ->
-        {:error, %Sqelect.Connection.Error{message: "Timeout"}}
-      :exit, ex ->
-        {:error, %Sqelect.Connection.Error{message: inspect(ex)}}
-    end
+    Sqlitex.Server.query_rows(db, stmt, opts)
+  catch
+    :exit, {:timeout, _gen_server_call} ->
+      {:error, %Sqelect.DbConnection.Error{message: "Timeout"}}
+    :exit, ex ->
+      {:error, %Sqelect.DbConnection.Error{message: inspect(ex)}}
   end
 
   defp command_from_sql(sql) do
@@ -182,7 +179,7 @@ defmodule Sqelect.Connection.Connection do
         end
         {
           :ok,
-          %Sqelect.Connection.Result{
+          %Sqelect.DbConnection.Result{
             rows: rows,
             num_rows: num_rows,
             columns: atoms_to_strings(column_names),
@@ -192,7 +189,7 @@ defmodule Sqelect.Connection.Connection do
       {:error, :wrong_type} -> {:error, %ArgumentError{message: "Wrong type"}, state}
       {:error, {_sqlite_errcode, _message}} = err ->
         sqlite_error(err, state)
-      {:error, %Sqelect.Connection.Error{} = err} ->
+      {:error, %Sqelect.DbConnection.Error{} = err} ->
         {:error, err, state}
       {:error, :args_wrong_length} ->
         {
@@ -223,11 +220,10 @@ defmodule Sqelect.Connection.Connection do
            |> to_string
            |> String.downcase
 
-
   defp sqlite_error({:error, {sqlite_errcode, message}}, state) do
     {
       :error,
-      %Sqelect.Connection.Error{
+      %Sqelect.DbConnection.Error{
         sqlite: %{
           code: sqlite_errcode
         },

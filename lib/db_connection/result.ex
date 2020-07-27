@@ -1,4 +1,4 @@
-defmodule Sqelect.Connection.Result do
+defmodule Sqelect.DbConnection.Result do
   @moduledoc """
   Result struct returned from any successful query. Its fields are:
 

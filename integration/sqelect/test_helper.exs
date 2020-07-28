@@ -40,7 +40,8 @@ alias Ecto.Integration.TestRepo
 
 Application.put_env(:ecto, TestRepo,
   adapter: Sqelect,
-  database: "/tmp/test_repo.db")
+  database: "/tmp/test_repo.db",
+  pool: Ecto.Adapters.SQL.Sandbox)
 
 defmodule Ecto.Integration.TestRepo do
   use Ecto.Integration.Repo, otp_app: :ecto, adapter: Sqelect
@@ -69,7 +70,7 @@ defmodule Ecto.Integration.PoolRepo do
 end
 
 defmodule Ecto.Integration.Case do
-  use ExUnit.Case, async: false
+  use ExUnit.CaseTemplate
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TestRepo)

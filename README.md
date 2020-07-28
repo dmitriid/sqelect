@@ -18,6 +18,30 @@ Tests fail with
 {"busy",3}
 {"busy",4}
 {"busy",5}
+Sqelect.DbConnection.Protocol (#PID<0.278.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.319.0> exited
+** (Sqelect.DbConnection.Error) {{:bad_return_value, :too_many_tries}, {GenServer, :call, [#PID<0.315.0>, {:query_rows, 
+"INSERT INTO \"schema_migrations\" (\"version\",\"inserted_at\") VALUES (?1,?2)", [timeout: :infinity, decode: :manual, 
+types: true, bind: [0, "2020-07-28T13:25:33"]]}, :infinity]}}
+```
+
+at the end of the first migration.
+
+`{busy}` comes from Sqlite:
+
+> The [SQLITE_BUSY](https://www.sqlite.org/rescode.html#busy) result code indicates that the database file could not be 
+> written (or in some cases read) because of concurrent activity by some other database connection, usually a database 
+> connection in a separate process.
+
+No idea how to fix this.
+
+# What changed?
+
+From what I can remember:
+
+## New callbacks
+
+```diff
+protocol.ex
 
 +   def handle_deallocate(_query, _cursor, _opts, state) do
 +     {:error, %Sqelect.DbConnection.Error{message: "Cursors not supported"}, state}

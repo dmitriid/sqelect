@@ -87,3 +87,13 @@ sqelect.ex
 +   {:ok, NaiveDateTime.to_iso8601(value)}
 + end
 ```
+
+## Tests
+
+Some deps are defined as
+
+```
+{:sqlitex, "~>1.7.1", path: "deps/sqlitex"}
+```
+
+to aid with debugging: you can change code in `deps/sqlitex` or pepper `IO.inspect` throughout and the changes will be picked up.

@@ -6,6 +6,7 @@ defmodule Sqelect.DbConnection.Protocol do
   alias Sqelect.DbConnection.Query
 
   defstruct [:db, :db_path, :pid, :checked_out?, :in_transaction?]
+  defstruct [:db, :db_path, :checked_out?, :in_transaction?]
 
   # ====================================================================================================================
   # Callbacks
@@ -23,11 +24,16 @@ defmodule Sqelect.DbConnection.Protocol do
     {:ok, [[foreign_keys: 1]]} = Sqlitex.Server.query(db, "PRAGMA foreign_keys")
 
     {:ok, %__MODULE__{db: db, db_path: db_path, checked_out?: false, pid: db}}
+    {:ok, %__MODULE__{db: db, db_path: db_path, checked_out?: false}}
   end
 
   def disconnect(_err, %__MODULE__{pid: pid}) do
     Supervisor.stop(pid)
+  def disconnect(_exc, %__MODULE__{db: db} = _state) when db != nil do
+    GenServer.stop(db)
+    :ok
   end
+  def disconnect(_exception, _state), do: :ok
 
   def handle_begin(opts, state) do
     sql = case Keyword.get(opts, :mode, :transaction) do

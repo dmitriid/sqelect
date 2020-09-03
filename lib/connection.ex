@@ -960,7 +960,7 @@ if Code.ensure_loaded?(Sqlitex.Server) do
 
     @datetime_format "strftime('%Y-%m-%d %H:%M:%f000'" # NOTE: Open paren must be closed
 
-    defp expr({:datetime_add, _, [datetime, count, interval] = dt}, sources, query) do
+    defp expr({:datetime_add, _, [datetime, count, interval]}, sources, query) do
       [
         "CAST (",
         @datetime_format,

@@ -1,27 +1,27 @@
 Logger.configure(level: :info)
 ExUnit.start exclude: [:array_type,
-                       :strict_savepoint,
-                       :update_with_join,
-                       :delete_with_join,
-                       :foreign_key_constraint,
-                       :modify_column,
-                       :modify_foreign_key,
-                       :prefix,
-                       :remove_column,
-                       :rename_column,
-                       :right_join,
-                       :unique_constraint,
-                       :uses_usec,
-                       :transaction_isolation,
-                       :insert_cell_wise_defaults,
-                       :modify_foreign_key_on_delete,
-                       :modify_foreign_key_on_update,
-                       :alter_primary_key,
-                       :map_boolean_in_subquery,
-                       :upsert_all,
-                       :with_conflict_target,
-                       :without_conflict_target,
-                       :decimal_type]
+               :strict_savepoint,
+               :update_with_join,
+               :delete_with_join,
+               :foreign_key_constraint,
+               :modify_column,
+               :modify_foreign_key,
+               :prefix,
+               :remove_column,
+               :rename_column,
+               :right_join,
+               :unique_constraint,
+               :uses_usec,
+               :transaction_isolation,
+               :insert_cell_wise_defaults,
+               :modify_foreign_key_on_delete,
+               :modify_foreign_key_on_update,
+               :alter_primary_key,
+               :map_boolean_in_subquery,
+               :upsert_all,
+               :with_conflict_target,
+               :without_conflict_target,
+               :decimal_type]
 
 # Configure Ecto for support and tests
 Application.put_env(:ecto, :primary_key_type, :id)
@@ -38,13 +38,20 @@ Code.require_file "../../deps/ecto_sql/integration_test/support/migration.exs", 
 
 alias Ecto.Integration.TestRepo
 
-Application.put_env(:ecto, TestRepo,
+Application.put_env(
+  :ecto,
+  TestRepo,
   adapter: Sqelect,
   database: "/tmp/test_repo.db",
-  pool: Ecto.Adapters.SQL.Sandbox)
+  pool: Ecto.Adapters.SQL.Sandbox,
+  migration_lock: nil,
+  pool_size: 1
+)
 
 defmodule Ecto.Integration.TestRepo do
-  use Ecto.Integration.Repo, otp_app: :ecto, adapter: Sqelect
+  use Ecto.Integration.Repo,
+      otp_app: :ecto,
+      adapter: Sqelect
 
   def uuid(), do: Ecto.UUID
 end
@@ -52,13 +59,21 @@ end
 # Pool repo for non-async tests
 alias Ecto.Integration.PoolRepo
 
-Application.put_env(:ecto, PoolRepo,
+Application.put_env(
+  :ecto,
+  PoolRepo,
   adapter: Sqelect,
   database: "/tmp/test_repo.db",
-  pool_size: 10)
+  pool_size: 10,
+  pool: Ecto.Adapters.SQL.Sandbox,
+  migration_lock: nil,
+  pool_size: 1
+)
 
 defmodule Ecto.Integration.PoolRepo do
-  use Ecto.Integration.Repo, otp_app: :ecto, adapter: Sqelect
+  use Ecto.Integration.Repo,
+      otp_app: :ecto,
+      adapter: Sqelect
 
   def create_prefix(prefix) do
     "create schema #{prefix}"
@@ -75,6 +90,10 @@ defmodule Ecto.Integration.Case do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(TestRepo)
     Ecto.Adapters.SQL.Sandbox.mode(TestRepo, {:shared, self()})
+    #Ecto.Adapters.SQL.Sandbox.mode(TestRepo, :manual)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(PoolRepo)
+    Ecto.Adapters.SQL.Sandbox.mode(PoolRepo, {:shared, self()})
+    #Ecto.Adapters.SQL.Sandbox.mode(PoolRepo, :manual)
   end
 end
 
@@ -85,7 +104,7 @@ end
 #Code.require_file "../../deps/ecto_sql/integration_test/support/migration.exs", __DIR__
 
 # Load up the repository, start it, and run migrations
-_   = Sqelect.storage_down(TestRepo.config)
+_ = Sqelect.storage_down(TestRepo.config)
 :ok = Sqelect.storage_up(TestRepo.config)
 
 {:ok, _pid} = TestRepo.start_link
@@ -93,5 +112,8 @@ _   = Sqelect.storage_down(TestRepo.config)
 
 :ok = Ecto.Migrator.up(TestRepo, 0, Ecto.Integration.Migration, log: false)
 :ok = Ecto.Migrator.up(TestRepo, 1, Sqelect.Test.Migration, log: false)
+
 Ecto.Adapters.SQL.Sandbox.mode(TestRepo, :manual)
+Ecto.Adapters.SQL.Sandbox.mode(PoolRepo, :manual)
+
 Process.flag(:trap_exit, true)

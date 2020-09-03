@@ -5,17 +5,23 @@ defmodule Sqelect.DbConnection.Protocol do
 
   alias Sqelect.DbConnection.Query
 
-  defstruct [:db, :db_path, :pid, :checked_out?, :in_transaction?]
   defstruct [:db, :db_path, :checked_out?, :in_transaction?]
 
   # ====================================================================================================================
   # Callbacks
   # ====================================================================================================================
 
-  def checkin(%__MODULE__{checked_out?: true} = state), do: {:ok, %__MODULE__{state | checked_out?: false}}
-  def checkout(%__MODULE__{checked_out?: false} = state), do: {:ok, %__MODULE__{state | checked_out?: true}}
+  def checkin(%__MODULE__{checked_out?: true} = state) do
+    IO.inspect({:checkin, state})
+    {:ok, %__MODULE__{state | checked_out?: false}}
+  end
+  def checkout(%__MODULE__{checked_out?: false} = state) do
+    IO.inspect({:checkout, state})
+    {:ok, %__MODULE__{state | checked_out?: true}}
+  end
 
   def connect(opts) do
+    IO.inspect({:connect, opts})
     db_path = Keyword.fetch!(opts, :database)
     db_timeout = Keyword.get(opts, :db_timeout, 5000)
 
@@ -23,12 +29,9 @@ defmodule Sqelect.DbConnection.Protocol do
     :ok = Sqlitex.Server.exec(db, "PRAGMA foreign_keys = ON")
     {:ok, [[foreign_keys: 1]]} = Sqlitex.Server.query(db, "PRAGMA foreign_keys")
 
-    {:ok, %__MODULE__{db: db, db_path: db_path, checked_out?: false, pid: db}}
     {:ok, %__MODULE__{db: db, db_path: db_path, checked_out?: false}}
   end
 
-  def disconnect(_err, %__MODULE__{pid: pid}) do
-    Supervisor.stop(pid)
   def disconnect(_exc, %__MODULE__{db: db} = _state) when db != nil do
     GenServer.stop(db)
     :ok
@@ -131,12 +134,15 @@ defmodule Sqelect.DbConnection.Protocol do
   end
 
   defp query_rows(db, stmt, opts) do
-    Sqlitex.Server.query_rows(db, stmt, opts)
-  catch
-    :exit, {:timeout, _gen_server_call} ->
-      {:error, %Sqelect.DbConnection.Error{message: "Timeout"}}
-    :exit, ex ->
-      {:error, %Sqelect.DbConnection.Error{message: inspect(ex)}}
+    try do
+      res = Sqlitex.Server.query_rows(db, stmt, opts)
+      res
+    catch
+      :exit, {:timeout, _gen_server_call} ->
+        {:error, %Sqelect.DbConnection.Error{message: "Timeout"}}
+      :exit, ex ->
+        {:error, %Sqelect.DbConnection.Error{message: inspect(ex)}}
+    end
   end
 
   defp command_from_sql(sql) do
@@ -177,7 +183,10 @@ defmodule Sqelect.DbConnection.Protocol do
     ]
 
     command = command_from_sql(query)
-    case query_rows(state.db, to_string(query), query_opts) do
+    z = query_rows(state.db, to_string(query), query_opts)
+#    IO.inspect({:run_stmt, command})
+#    IO.inspect({:run_stmt, z})
+    case z do
       {:ok, %{rows: raw_rows, columns: raw_column_names}} ->
         {rows, num_rows, column_names} = case {raw_rows, raw_column_names} do
           {_, []} -> {nil, get_changes_count(state.db, command), nil}

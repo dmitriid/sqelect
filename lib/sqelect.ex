@@ -82,8 +82,8 @@ defmodule Sqelect do
   def loaders(:binary_id, type), do: [Ecto.UUID, type]
   def loaders(:utc_datetime, type), do: [&date_decode/1, type]
   def loaders(:naive_datetime, type), do: [&date_decode/1, type]
-  def loaders({:embed, _} = type, _),
-      do: [&json_decode/1, &Ecto.Adapters.SQL.load_embed(type, &1)]
+  #def loaders({:embed, _} = type, _),
+  #    do: [&json_decode/1, &Ecto.Adapters.SQL.load_embed(type, &1)]
   def loaders(:map, type), do: [&json_decode/1, type]
   def loaders({:map, _}, type), do: [&json_decode/1, type]
   def loaders({:array, _}, type), do: [&json_decode/1, type]
@@ -127,7 +127,7 @@ defmodule Sqelect do
   def dumpers(:binary, type), do: [type, &blob_encode/1]
   def dumpers(:binary_id, type), do: [type, Ecto.UUID]
   def dumpers(:boolean, type), do: [type, &bool_encode/1]
-  def dumpers({:embed, _} = type, _), do: [&Ecto.Adapters.SQL.dump_embed(type, &1)]
+  #def dumpers({:embed, _} = type, _), do: [&Ecto.Adapters.SQL.dump_embed(type, &1)]
   def dumpers(:time, type), do: [type, &time_encode/1]
   def dumpers(:naive_datetime, type), do: [type, &naive_datetime_encode/1]
   def dumpers(_primitive, type), do: [type]

@@ -24,10 +24,12 @@ defmodule Sqelect.MixProject do
   defp deps do
     # deps
     [
-      {:ecto, "~>3.4.5", path: "deps/ecto", override: true},
-      {:ecto_sql, "~>3.4.5", path: "deps/ecto_sql", override: true},
-      {:db_connection, "~>2.2.2", path: "deps/db_connection", override: true},
-      {:sqlitex, "~>1.7.1", path: "deps/sqlitex", override: true}
+      {:ecto, "~>3.4.5"
+#                , path: "deps/ecto", override: true
+                                     },
+      {:ecto_sql, "~>3.4.5"
+#  , path: "deps/ecto_sql", override: true
+                        },
     ] ++
     # dev deps
     [

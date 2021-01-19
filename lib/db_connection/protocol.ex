@@ -2,6 +2,7 @@ defmodule Sqelect.DbConnection.Protocol do
   @moduledoc false
 
   @behaviour DBConnection
+  use Agent
 
   alias Sqelect.DbConnection.Query
 
@@ -16,23 +17,36 @@ defmodule Sqelect.DbConnection.Protocol do
     {:ok, %__MODULE__{state | checked_out?: false}}
   end
   def checkout(%__MODULE__{checked_out?: false} = state) do
-    IO.inspect({:checkout, state})
+    IO.inspect({:checkout, state, self()})
     {:ok, %__MODULE__{state | checked_out?: true}}
   end
 
   def connect(opts) do
-    IO.inspect({:connect, opts})
+    IO.inspect({:connect, opts, self()})
+#    Registry.start_link(keys: :unique, name: __MODULE__, show_sensitive_data_on_connection_error: true)
     db_path = Keyword.fetch!(opts, :database)
     db_timeout = Keyword.get(opts, :db_timeout, 5000)
 
-    {:ok, db} = Sqlitex.Server.start_link(db_path, db_timeout: db_timeout)
-    :ok = Sqlitex.Server.exec(db, "PRAGMA foreign_keys = ON")
-    {:ok, [[foreign_keys: 1]]} = Sqlitex.Server.query(db, "PRAGMA foreign_keys")
+    name = {:via, Registry, {__MODULE__, db_path}}
 
-    {:ok, %__MODULE__{db: db, db_path: db_path, checked_out?: false}}
+#    v = Registry.lookup(__MODULE__, db_path)
+#    IO.inspect({:registry_lookup, v, self()})
+
+    pid = case Sqlitex.Server.start_link(db_path, db_timeout: db_timeout, name: String.to_atom(db_path)) do
+      {:ok, p} -> p
+      {:error, {:already_started, p}} -> p
+    end
+    IO.inspect({:server_start, pid, self()})
+
+    :ok = Sqlitex.Server.exec(pid, "PRAGMA foreign_keys = ON")
+    {:ok, [[foreign_keys: 1]]} = Sqlitex.Server.query(pid, "PRAGMA foreign_keys")
+
+    {:ok, %__MODULE__{db: pid, db_path: db_path, checked_out?: false}}
   end
 
-  def disconnect(_exc, %__MODULE__{db: db} = _state) when db != nil do
+  def disconnect(_exc, %__MODULE__{db: db, db_path: db_path} = _state) when db != nil do
+    IO.inspect({:disconnect, db_path})
+#    Registry.unregister(__MODULE__, db_path)
     GenServer.stop(db)
     :ok
   end
@@ -184,8 +198,8 @@ defmodule Sqelect.DbConnection.Protocol do
 
     command = command_from_sql(query)
     z = query_rows(state.db, to_string(query), query_opts)
-#    IO.inspect({:run_stmt, command})
-#    IO.inspect({:run_stmt, z})
+    #    IO.inspect({:run_stmt, command})
+    #    IO.inspect({:run_stmt, z})
     case z do
       {:ok, %{rows: raw_rows, columns: raw_column_names}} ->
         {rows, num_rows, column_names} = case {raw_rows, raw_column_names} do

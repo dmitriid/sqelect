@@ -1,3 +1,6 @@
+
+**NOTE:** Work continues/has been restarted in https://github.com/warmwaffles/exqlite
+
 # What
 
 This is a shameless copy-pasta of [sqlite_ecto2](https://github.com/elixir-sqlite/sqlite_ecto2)
